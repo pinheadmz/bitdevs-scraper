@@ -43,8 +43,8 @@ let template = fs.readFileSync(path.join(__dirname, '_template.md'), 'utf-8');
   const eventDate = event.local_date;
   const eventTitle = event.name.toLowerCase().replaceAll(' ', '-');
   const filename = eventDate + '-' + eventTitle + '.md';
-  const filepath = path.join(argv[3], filename)
-  console.log(`Writing file: ${filepath}`)
+  const filepath = path.join(argv[3], filename);
+  console.log(`Writing file: ${filepath}`);
   fs.writeFileSync(filepath, template);
   console.log('Done!\n\n');
 })().catch((err) => {
@@ -67,14 +67,14 @@ async function fetchURL(url) {
     https.get(
       url,
       {headers: {'User-Agent': 'bitdevs-scraper'}},
-      res => {
-        let data = [];
-        res.on('data', chunk => {
+      (res) => {
+        const data = [];
+        res.on('data', (chunk) => {
           data.push(chunk);
-        })
+        });
         res.on('end', () => {
           resolve(Buffer.concat(data).toString());
-        })
+        });
       });
   });
 }
@@ -152,9 +152,13 @@ async function getCoreDevIRCMeeting(start) {
     const items = doc.querySelectorAll('.nt');
     items.forEach((i) => {
       if (i.innerHTML === '&lt;core-meetingbot&gt; ') {
-        if (i.nextSibling.data && i.nextSibling.data.indexOf('Meeting started') !== -1) {
+        if (i.nextSibling.data
+          && i.nextSibling.data.indexOf('Meeting started') !== -1
+        ) {
           const lineno = i.previousSibling.previousSibling.innerHTML.trim();
-          const title = start.toLocaleString('UTC', {month: 'long'}) + ' ' + date;
+          const title = start.toLocaleString('UTC', {month: 'long'})
+                        + ' '
+                        + date;
           const href = url + '#l-' + lineno;
           links.push(new Link(title, href));
         }
@@ -171,7 +175,7 @@ async function getOptech(start) {
 
   const dom = await JSDOM.fromURL(url);
   const doc = dom.window.document;
-  const items = doc.querySelectorAll(`.post-link`);
+  const items = doc.querySelectorAll('.post-link');
   const links = [];
   items.forEach((i) => {
     const postDate = i.parentNode.previousSibling.previousSibling.innerHTML;
@@ -202,7 +206,9 @@ async function getPRs(org, repo, start) {
 
     links.push({merged: pr.merged_at, title: pr.title, href: pr.html_url});
   }
-  links.sort((a, b) => {return (new Date(b.merged) - new Date(a.merged))});
+  links.sort((a, b) => {
+    return (new Date(b.merged) - new Date(a.merged));
+  });
   const filtered = links.map(l => new Link(l.title, l.href));
   return filtered;
 }
