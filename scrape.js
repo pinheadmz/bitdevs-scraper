@@ -18,6 +18,10 @@ if (argv.length !== 4) {
 }
 
 const start = new Date(argv[2]);
+// Get that entire first day
+start.setUTCHours(23);
+start.setUTCMinutes(59);
+
 let template = fs.readFileSync(path.join(__dirname, '_template.md'), 'utf-8');
 
 (async () => {
@@ -187,28 +191,36 @@ async function getOptech(start) {
 }
 
 async function getPRs(org, repo, start) {
-  const url = `https://api.github.com/repos/${org}/${repo}/pulls?state=closed&sort=closed&direction=desc&per_page=100&page=1`;
+  let out = [];
+  for (let page = 1; page < 100; page++) {
+    const url = `https://api.github.com/repos/${org}/${repo}/pulls?state=closed&sort=closed&direction=desc&per_page=100&page=${page}`;
 
-  console.log(`Fetching ${url}`);
+    console.log(`Fetching ${url}`);
 
-  const links = [];
-  const prs = JSON.parse(await fetchURL(url));
-  for (const number in Object.keys(prs)) {
-    const pr = prs[number];
-    if (pr.merged_at == null || pr.base.ref !== 'master')
-      continue;
-
-    const mergeDate = new Date(pr.merged_at);
-    if (mergeDate < start)
+    const links = [];
+    const prs = JSON.parse(await fetchURL(url));
+    if (prs.length === 0)
       break;
+    for (const number in Object.keys(prs)) {
+      const pr = prs[number];
+      if (pr.merged_at == null || pr.base.ref !== 'master')
+        continue;
 
-    links.push({merged: pr.merged_at, title: pr.title, href: pr.html_url});
+      const mergeDate = new Date(pr.merged_at);
+      if (mergeDate < start) {
+        page = Infinity;
+        break;
+      }
+
+      links.push({merged: pr.merged_at, title: pr.title, href: pr.html_url});
+    }
+    links.sort((a, b) => {
+      return (new Date(b.merged) - new Date(a.merged));
+    });
+    const filtered = links.map(l => new Link(l.title, l.href));
+    out = out.concat(filtered);
   }
-  links.sort((a, b) => {
-    return (new Date(b.merged) - new Date(a.merged));
-  });
-  const filtered = links.map(l => new Link(l.title, l.href));
-  return filtered;
+  return out;
 }
 
 function fillSection(section, indent, links) {
