@@ -25,13 +25,26 @@ start.setUTCMinutes(59);
 let template = fs.readFileSync(path.join(__dirname, '_template.md'), 'utf-8');
 
 (async () => {
-  await tryCatch('bitcoin_dev',       0, getML, start, 'bitcoin-dev');
-  await tryCatch('lightning_dev',     0, getML, start, 'lightning-dev');
-  await tryCatch('dlc_dev',           0, getML, start, 'dlc-dev', 'https://mailmanlists.org/pipermail/dlc-dev/');
-  await tryCatch('review_club',       4, getReviewClub, start);
-  await tryCatch('irc_meetings',      4,  getCoreDevIRCMeeting, start);
-  await tryCatch('optech',            0,  getOptech, start);
-  await tryCatch('bitcoin_core_prs',  0,  getPRs, 'bitcoin', 'bitcoin', start);
+  await tryCatch('bitcoin_dev',       0, getML,                 start, 'bitcoin-dev');
+  await tryCatch('lightning_dev',     0, getML,                 start, 'lightning-dev');
+  await tryCatch('dlc_dev',           0, getML,                 start, 'dlc-dev', 'https://mailmanlists.org/pipermail/dlc-dev/');
+  await tryCatch('review_club',       4, getReviewClub,         start);
+  await tryCatch('irc_meetings',      4, getCoreDevIRCMeeting,  start);
+  await tryCatch('optech',            0, getOptech,             start);
+  await tryCatch('bitcoin_core_prs',  0, getPRs, 'bitcoin',               'bitcoin', start);
+  await tryCatch('bdk_prs',           0, getPRs, 'bitcoindevkit',         'bdk', start);
+  await tryCatch('hwi_prs',           0, getPRs, 'bitcoin-core',          'HWI', start);
+  await tryCatch('rust_prs',          0, getPRs, 'rust-bitcoin',          'rust-bitcoin', start);
+  await tryCatch('secp_prs',          0, getPRs, 'bitcoin-core',          'secp256k1', start);
+  await tryCatch('zkp_prs',           0, getPRs, 'ElementsProject',       'secp256k1-zkp', start);
+  await tryCatch('dlc_prs',           0, getPRs, 'discreetlogcontracts',  'dlcspecs', start);
+  await tryCatch('cln_prs',           0, getPRs, 'ElementsProject',       'lightning', start);
+  await tryCatch('eclair_prs',        0, getPRs, 'ACINQ',                 'eclair', start);
+  await tryCatch('ldk_prs',           0, getPRs, 'lightningdevkit',       'rust-lightning', start);
+  await tryCatch('lnd_prs',           0, getPRs, 'lightningnetwork',      'lnd', start);
+  await tryCatch('bips_prs',          0, getPRs, 'bitcoin',               'bips', start);
+  await tryCatch('blips_prs',         0, getPRs, 'lightning',             'blips', start);
+  await tryCatch('lnrfc_prs',         0, getPRs, 'lightningnetwork',      'lightning-rfc', start);
 
   // Finalize
   console.log('Fetching Meetup information');
@@ -192,17 +205,27 @@ async function getOptech(start) {
 
 async function getPRs(org, repo, start) {
   let out = [];
-  for (let page = 1; page < 100; page++) {
+  for (let page = 1; page < 10; page++) {
     const url = `https://api.github.com/repos/${org}/${repo}/pulls?state=closed&sort=closed&direction=desc&per_page=100&page=${page}`;
 
     console.log(`Fetching ${url}`);
 
     const links = [];
-    const prs = JSON.parse(await fetchURL(url));
+    let prs = JSON.parse(await fetchURL(url));
+
+    if (prs.message === 'Moved Permanently') {
+      console.log(`Redirected to: ${prs.url}`);
+      prs = JSON.parse(await fetchURL(prs.url));
+    }
+
     if (prs.length === 0)
       break;
     for (const number in Object.keys(prs)) {
       const pr = prs[number];
+      if (!pr) {
+        console.log(`No PR found at index ${number}: `, prs);
+        continue;
+      }
       if (pr.merged_at == null || pr.base.ref !== 'master')
         continue;
 
