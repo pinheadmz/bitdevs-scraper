@@ -151,17 +151,15 @@ async function getCoreDevIRCMeeting(start) {
     const doc = dom.window.document;
     const items = doc.querySelectorAll('.nt');
     items.forEach((i) => {
-      if (i.innerHTML === '&lt;core-meetingbot&gt; ') {
-        if (i.nextSibling.data
-          && i.nextSibling.data.indexOf('Meeting started') !== -1
-        ) {
-          const lineno = i.previousSibling.previousSibling.innerHTML.trim();
-          const title = start.toLocaleString('UTC', {month: 'long'})
-                        + ' '
-                        + date;
-          const href = url + '#l-' + lineno;
-          links.push(new Link(title, href));
-        }
+      if (i.nextSibling.data
+        && i.nextSibling.data.indexOf('#startmeeting') !== -1
+      ) {
+        const lineno = i.previousSibling.previousSibling.innerHTML.trim();
+        const title = start.toLocaleString('UTC', {month: 'long'})
+                      + ' '
+                      + date;
+        const href = url + '#l-' + lineno;
+        links.push(new Link(title, href));
       }
     });
   }
