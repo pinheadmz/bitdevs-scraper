@@ -184,22 +184,28 @@ async function getCoreDevIRCMeeting(start) {
 }
 
 async function getOptech(start) {
-  const url = 'https://bitcoinops.org/en/newsletters/';
-
-  console.log(`Fetching ${url}`);
-
-  const dom = await JSDOM.fromURL(url);
-  const doc = dom.window.document;
-  const items = doc.querySelectorAll('.post-link');
   const links = [];
-  items.forEach((i) => {
-    const postDate = i.parentNode.previousSibling.previousSibling.innerHTML;
-    if (new Date(postDate) >= start) {
-      const title = i.innerHTML.trim();
-      const href = i.href.trim();
-      links.push(new Link(title, href));
-    }
-  });
+
+  for (const url of ['https://bitcoinops.org/en/newsletters/',
+                     'https://bitcoinops.org/en/podcast/']) {
+
+    console.log(`Fetching ${url}`);
+
+    const dom = await JSDOM.fromURL(url);
+    const doc = dom.window.document;
+    const items = doc.querySelectorAll('.post-link');
+    
+    items.forEach((i) => {
+      const postDate = i.parentNode.previousSibling.previousSibling.innerHTML;
+      console.log(postDate)
+      if (new Date(postDate) >= start) {
+        console.log(`pushing: ${i.innerHTML.trim()}`)
+        const title = i.innerHTML.trim();
+        const href = i.href.trim();
+        links.push(new Link(title, href));
+      }
+    });
+  }
   return links;
 }
 
