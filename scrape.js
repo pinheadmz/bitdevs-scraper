@@ -212,7 +212,7 @@ async function getOptech(start) {
 async function getPRs(org, repo, start) {
   let out = [];
   for (let page = 1; page < 10; page++) {
-    const url = `https://api.github.com/repos/${org}/${repo}/pulls?state=closed&sort=closed&direction=desc&per_page=100&page=${page}`;
+    const url = `https://api.github.com/repos/${org}/${repo}/pulls?state=closed&base=master&sort=updated&direction=desc&per_page=100&page=${page}`;
 
     console.log(`Fetching ${url}`);
 
@@ -224,23 +224,34 @@ async function getPRs(org, repo, start) {
       prs = JSON.parse(await fetchURL(prs.url));
     }
 
-    if (prs.length === 0)
+    if (prs.length === 0) {
+      console.log('  No more PRs');
       break;
+    }
     for (const number in Object.keys(prs)) {
       const pr = prs[number];
       if (!pr) {
-        console.log(`No PR found at index ${number}: `, prs);
+        // should not happen
+        console.log(`  No PR found at index ${number}`);
         continue;
       }
-      if (pr.merged_at == null || pr.base.ref !== 'master')
+      if (pr.merged_at == null) {
+        console.log(`  PR #${pr.number} not merged`);
         continue;
+      }
+      if (pr.base.ref !== 'master') {
+        // should not happen
+        console.log(`  PR #${pr.number} not merged into master`);
+        continue;
+      }
 
       const mergeDate = new Date(pr.merged_at);
       if (mergeDate < start) {
-        page = Infinity;
-        break;
+        console.log(`  PR #${pr.number} merged before start date`);
+        continue;
       }
 
+      console.log(`  Adding PR #${pr.number}, merged on ${pr.merged_at}`);
       links.push({merged: pr.merged_at, title: pr.title, href: pr.html_url});
     }
     links.sort((a, b) => {
