@@ -19,8 +19,12 @@ if (argv.length !== 4) {
 
 const start = new Date(argv[2]);
 // Get that entire first day
-start.setUTCHours(23);
-start.setUTCMinutes(59);
+start.setUTCHours(0);
+start.setUTCMinutes(0);
+
+const end = new Date();
+end.setUTCHours(23);
+end.setUTCMinutes(59);
 
 let template = fs.readFileSync(path.join(__dirname, '_template.md'), 'utf-8');
 
@@ -97,53 +101,118 @@ async function fetchURL(url) {
 }
 
 async function getML(start, name, _url) {
-  const url = (_url ? _url : `https://lists.linuxfoundation.org/pipermail/${name}/`) +
-              start.getUTCFullYear() +
-              '-' +
-              start.toLocaleString('UTC', {month: 'long'}) +
-              '/thread.html';
-
-  console.log(`Fetching ${url}`);
-
-  const dom = await JSDOM.fromURL(url);
-  const doc = dom.window.document;
-  const items = doc.querySelectorAll('body > ul:nth-of-type(2) > li > a[href]');
   const links = [];
-  items.forEach((i) => {
-    let title = i.innerHTML;
-    title = title.replace('\n', '');
-    title = title.replace('\t', ' ');
-    title = title.replace(/\[.*\] /g, '');
-    const href = i.href;
-    links.push(new Link(title, href));
-  });
+  const tempd = new Date(start);
+  const titles = new Set();
+
+  for (;;) {
+    const url = (_url ? _url : `https://lists.linuxfoundation.org/pipermail/${name}/`) +
+                tempd.getUTCFullYear() +
+                '-' +
+                tempd.toLocaleString('UTC', {month: 'long'}) +
+                '/thread.html';
+
+    let dom;
+    try {
+      console.log(`Fetching ${url}`);
+      dom = await JSDOM.fromURL(url);
+    } catch (e) {
+      console.log(`Error getting page, aborting: ${e.message}`);
+      break;
+    }
+    const doc = dom.window.document;
+    const items =
+      doc.querySelectorAll('body > ul:nth-of-type(2) > li > a[href]');
+
+    for (const i of items) {
+      let title = i.innerHTML;
+
+      title = title.replace('\n', '');
+      title = title.replace('\t', ' ');
+      title = title.replace(/\[.*\] /g, '');
+
+      if (titles.has(title)) {
+        console.log(` Already have title: "${title}"`);
+        continue;
+      } else {
+        titles.add(title);
+      }
+
+      const href = i.href;
+
+      if (!(await checkMLPostDate(href))) {
+        console.log(` Posted before start date: "${title}"`);
+        continue;
+      }
+      links.push(new Link(title, href));
+    }
+
+    tempd.setUTCMonth(tempd.getUTCMonth() + 1);
+  }
+
   return links;
+}
+
+async function checkMLPostDate(href) {
+  let dom;
+  try {
+    dom = await JSDOM.fromURL(href);
+  } catch (e) {
+    console.log(`Error getting ML post to check date, aborting: ${e.message}`);
+    return true; // err on the side of "sure..."
+  }
+  const doc = dom.window.document;
+  const date = doc.querySelectorAll('i')[0].innerHTML;
+  return new Date(date) > start;
 }
 
 async function getReviewClub(start) {
   const url = 'https://bitcoincore.reviews/meetings/';
 
   console.log(`Fetching ${url}`);
-
-  const id = start.toLocaleString('UTC', {month: 'long'}).substr(0, 3) +
-             start.getUTCFullYear();
-
-  const dom = await JSDOM.fromURL(url);
-  const doc = dom.window.document;
-  const items = doc.querySelectorAll(`#${id} .Home-posts-post-title`);
   const links = [];
-  items.forEach((i) => {
-    const title = i.innerHTML;
-    const href = i.href;
-    links.push(new Link(title, href));
-  });
+
+  const tempd = new Date(start);
+
+  for (;;) {
+    const abbr = tempd.toLocaleString('UTC', {month: 'long'}).substr(0, 3);
+    console.log(` Month: ${abbr}`);
+    const id = abbr + tempd.getUTCFullYear();
+
+    const dom = await JSDOM.fromURL(url);
+    const doc = dom.window.document;
+    const items = doc.querySelectorAll(`#${id} .Home-posts-post`);
+    if (items.length === 0) {
+      console.log(' No more review club meetings found, aborting');
+      break;
+    }
+
+    items.forEach((i) => {
+      const date = new Date(i.querySelector('.Home-posts-post-date').innerHTML);
+
+      if (date < start) {
+        console.log(' Meeting is before start date, skipping');
+        return; // next item
+      }
+
+      const link = i.querySelector('.Home-posts-post-title');
+
+      const title = link.innerHTML;
+      const href = link.href;
+      links.push(new Link(title, href));
+    });
+
+    tempd.setUTCMonth(tempd.getUTCMonth() + 1);
+  }
+
   return links;
 }
 
 async function getCoreDevIRCMeeting(start) {
-  const year = start.getUTCFullYear();
-  const month = start.getUTCMonth() + 1;
-  function getURL(y, m, d) {
+  function getURL(date) {
+    const y = date.getUTCFullYear();
+    const m = date.getUTCMonth() + 1;
+    const d = date.getUTCDate();
     return 'https://www.erisian.com.au/bitcoin-core-dev/log-' +
             y +
             '-' +
@@ -154,32 +223,36 @@ async function getCoreDevIRCMeeting(start) {
   }
 
   const links = [];
-  for (let date = 1; date <= 31; date++) {
-    const url = getURL(year, month, date);
+  const tempd = new Date(start);
+
+  while (tempd <= end) {
+    const url = getURL(tempd);
     console.log(`Fetching ${url}`);
     let dom;
     try {
       dom = await JSDOM.fromURL(url);
+
+      const doc = dom.window.document;
+      const items = doc.querySelectorAll('.nt');
+      items.forEach((i) => {
+        if (i.nextSibling.data
+          && i.nextSibling.data.indexOf('#startmeeting') !== -1
+        ) {
+          const lineno = i.previousSibling.previousSibling.innerHTML.trim();
+          const title = tempd.toLocaleString('UTC', {month: 'long'})
+                        + ' '
+                        + tempd.getUTCDate();
+          const href = url + '#l-' + lineno;
+          links.push(new Link(title, href));
+        }
+      });
     } catch (e) {
       console.log(e.message);
-      continue;
     }
 
-    const doc = dom.window.document;
-    const items = doc.querySelectorAll('.nt');
-    items.forEach((i) => {
-      if (i.nextSibling.data
-        && i.nextSibling.data.indexOf('#startmeeting') !== -1
-      ) {
-        const lineno = i.previousSibling.previousSibling.innerHTML.trim();
-        const title = start.toLocaleString('UTC', {month: 'long'})
-                      + ' '
-                      + date;
-        const href = url + '#l-' + lineno;
-        links.push(new Link(title, href));
-      }
-    });
+    tempd.setUTCDate(tempd.getUTCDate() + 1);
   }
+
   return links;
 }
 
@@ -188,24 +261,23 @@ async function getOptech(start) {
 
   for (const url of ['https://bitcoinops.org/en/newsletters/',
                      'https://bitcoinops.org/en/podcast/']) {
-
     console.log(`Fetching ${url}`);
 
     const dom = await JSDOM.fromURL(url);
     const doc = dom.window.document;
     const items = doc.querySelectorAll('.post-link');
-    
+
     items.forEach((i) => {
       const postDate = i.parentNode.previousSibling.previousSibling.innerHTML;
-      console.log(postDate)
       if (new Date(postDate) >= start) {
-        console.log(`pushing: ${i.innerHTML.trim()}`)
+        console.log(`pushing: ${i.innerHTML.trim()}`);
         const title = i.innerHTML.trim();
         const href = i.href.trim();
         links.push(new Link(title, href));
       }
     });
   }
+
   return links;
 }
 
@@ -254,6 +326,12 @@ async function getPRs(org, repo, start) {
       console.log(`  Adding PR #${pr.number}, merged on ${pr.merged_at}`);
       links.push({merged: pr.merged_at, title: pr.title, href: pr.html_url});
     }
+
+    if (links.length === 0) {
+      console.log('  No links to add from this page, aborting');
+      break;
+    }
+
     links.sort((a, b) => {
       return (new Date(b.merged) - new Date(a.merged));
     });
