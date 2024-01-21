@@ -21,6 +21,9 @@ If you can't make it to the main event please join us at PUBKEY around 9:30PM. *
 #### [lightning-dev](https://lists.linuxfoundation.org/pipermail/lightning-dev)
 {{lightning_dev}}
 
+#### [Delving Bitcoin](https://delvingbitcoin.org/)
+{{delving}}
+
 #### [dlc-dev](https://mailmanlists.org/pipermail/dlc-dev)
 {{dlc_dev}}
 

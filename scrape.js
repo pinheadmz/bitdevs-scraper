@@ -29,26 +29,28 @@ end.setUTCMinutes(59);
 let template = fs.readFileSync(path.join(__dirname, '_template.md'), 'utf-8');
 
 (async () => {
+  //              section        indent  function               args
+  await tryCatch('delving',           0, getDelving,            start);
   await tryCatch('bitcoin_dev',       0, getML,                 start, 'bitcoin-dev');
   await tryCatch('lightning_dev',     0, getML,                 start, 'lightning-dev');
   await tryCatch('dlc_dev',           0, getML,                 start, 'dlc-dev', 'https://mailmanlists.org/pipermail/dlc-dev/');
   await tryCatch('review_club',       4, getReviewClub,         start);
   await tryCatch('irc_meetings',      4, getCoreDevIRCMeeting,  start);
   await tryCatch('optech',            0, getOptech,             start);
-  await tryCatch('bitcoin_core_prs',  0, getPRs, 'bitcoin',               'bitcoin', start);
-  await tryCatch('bdk_prs',           0, getPRs, 'bitcoindevkit',         'bdk', start);
-  await tryCatch('hwi_prs',           0, getPRs, 'bitcoin-core',          'HWI', start);
-  await tryCatch('rust_prs',          0, getPRs, 'rust-bitcoin',          'rust-bitcoin', start);
-  await tryCatch('secp_prs',          0, getPRs, 'bitcoin-core',          'secp256k1', start);
-  await tryCatch('zkp_prs',           0, getPRs, 'ElementsProject',       'secp256k1-zkp', start);
-  await tryCatch('dlc_prs',           0, getPRs, 'discreetlogcontracts',  'dlcspecs', start);
-  await tryCatch('cln_prs',           0, getPRs, 'ElementsProject',       'lightning', start);
-  await tryCatch('eclair_prs',        0, getPRs, 'ACINQ',                 'eclair', start);
-  await tryCatch('ldk_prs',           0, getPRs, 'lightningdevkit',       'rust-lightning', start);
-  await tryCatch('lnd_prs',           0, getPRs, 'lightningnetwork',      'lnd', start);
-  await tryCatch('bips_prs',          0, getPRs, 'bitcoin',               'bips', start);
-  await tryCatch('blips_prs',         0, getPRs, 'lightning',             'blips', start);
-  await tryCatch('lnrfc_prs',         0, getPRs, 'lightningnetwork',      'lightning-rfc', start);
+  await tryCatch('bitcoin_core_prs',  0, getPRs,                'bitcoin', 'bitcoin', start);
+  await tryCatch('bdk_prs',           0, getPRs,                'bitcoindevkit', 'bdk', start);
+  await tryCatch('hwi_prs',           0, getPRs,                'bitcoin-core', 'HWI', start);
+  await tryCatch('rust_prs',          0, getPRs,                'rust-bitcoin', 'rust-bitcoin', start);
+  await tryCatch('secp_prs',          0, getPRs,                'bitcoin-core', 'secp256k1', start);
+  await tryCatch('zkp_prs',           0, getPRs,                'ElementsProject', 'secp256k1-zkp', start);
+  await tryCatch('dlc_prs',           0, getPRs,                'discreetlogcontracts', 'dlcspecs', start);
+  await tryCatch('cln_prs',           0, getPRs,                'ElementsProject', 'lightning', start);
+  await tryCatch('eclair_prs',        0, getPRs,                'ACINQ', 'eclair', start);
+  await tryCatch('ldk_prs',           0, getPRs,                'lightningdevkit', 'rust-lightning', start);
+  await tryCatch('lnd_prs',           0, getPRs,                'lightningnetwork', 'lnd', start);
+  await tryCatch('bips_prs',          0, getPRs,                'bitcoin', 'bips', start);
+  await tryCatch('blips_prs',         0, getPRs,                'lightning', 'blips', start);
+  await tryCatch('lnrfc_prs',         0, getPRs,                'lightningnetwork', 'lightning-rfc', start);
 
   // Finalize
   console.log('Fetching Meetup information');
@@ -338,6 +340,33 @@ async function getPRs(org, repo, start) {
     const filtered = links.map(l => new Link(l.title, l.href));
     out = out.concat(filtered);
   }
+  return out;
+}
+
+async function getDelving(start) {
+  const out = [];
+
+outer:
+  for (let page = 0; page < 9; page++) {
+    const url = `https://delvingbitcoin.org/latest.json?page=${page}`;
+
+    console.log(`Fetching ${url}`);
+
+    const res = JSON.parse(await fetchURL(url));
+    const topics = res['topic_list']['topics'];
+    topics.sort((a, b) => b.id - a.id);
+
+    for (const topic of topics) {
+      const postDate = new Date(topic['created_at']);
+      if (postDate < start) {
+        console.log(`  Topic "${topic['title']}" posted before start date`);
+        break outer;
+      }
+
+      out.push(new Link(topic.title, `https://delvingbitcoin.org/t/${topic.slug}`));
+    }
+  }
+
   return out;
 }
 
