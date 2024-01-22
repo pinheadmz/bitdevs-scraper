@@ -46,7 +46,7 @@ let template = fs.readFileSync(path.join(__dirname, '_template.md'), 'utf-8');
   await tryCatch('dlc_prs',           0, getPRs,                'discreetlogcontracts', 'dlcspecs', start);
   await tryCatch('cln_prs',           0, getPRs,                'ElementsProject', 'lightning', start);
   await tryCatch('eclair_prs',        0, getPRs,                'ACINQ', 'eclair', start);
-  await tryCatch('ldk_prs',           0, getPRs,                'lightningdevkit', 'rust-lightning', start);
+  await tryCatch('ldk_prs',           0, getPRs,                'lightningdevkit', 'rust-lightning', start, 'main');
   await tryCatch('lnd_prs',           0, getPRs,                'lightningnetwork', 'lnd', start);
   await tryCatch('bips_prs',          0, getPRs,                'bitcoin', 'bips', start);
   await tryCatch('blips_prs',         0, getPRs,                'lightning', 'blips', start);
@@ -283,10 +283,10 @@ async function getOptech(start) {
   return links;
 }
 
-async function getPRs(org, repo, start) {
+async function getPRs(org, repo, start, branch='master') {
   let out = [];
   for (let page = 1; page < 10; page++) {
-    const url = `https://api.github.com/repos/${org}/${repo}/pulls?state=closed&base=master&sort=updated&direction=desc&per_page=100&page=${page}`;
+    const url = `https://api.github.com/repos/${org}/${repo}/pulls?state=closed&base=${branch}&sort=updated&direction=desc&per_page=100&page=${page}`;
 
     console.log(`Fetching ${url}`);
 
@@ -313,9 +313,9 @@ async function getPRs(org, repo, start) {
         console.log(`  PR #${pr.number} not merged`);
         continue;
       }
-      if (pr.base.ref !== 'master') {
+      if (pr.base.ref !== branch) {
         // should not happen
-        console.log(`  PR #${pr.number} not merged into master`);
+        console.log(`  PR #${pr.number} not merged into ${branch}`);
         continue;
       }
 
