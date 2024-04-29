@@ -15,17 +15,11 @@ If you can't make it to the main event please join us at PUBKEY around 9:30PM. *
 
 ## Mailing Lists, Meetings and Bitcoin Optech
 ### Mailing Lists
-#### [bitcoin-dev](https://lists.linuxfoundation.org/pipermail/bitcoin-dev)
+#### [bitcoin-dev](https://groups.google.com/g/bitcoindev)
 {{bitcoin_dev}}
-
-#### [lightning-dev](https://lists.linuxfoundation.org/pipermail/lightning-dev)
-{{lightning_dev}}
 
 #### [Delving Bitcoin](https://delvingbitcoin.org/)
 {{delving}}
-
-#### [dlc-dev](https://mailmanlists.org/pipermail/dlc-dev)
-{{dlc_dev}}
 
 ### Meetings
 - [Bitcoin PR Review Club](https://bitcoincore.reviews)
@@ -34,14 +28,6 @@ If you can't make it to the main event please join us at PUBKEY around 9:30PM. *
 {{irc_meetings}}
 - Lightning Specification meeting
     - <!--- TODO replace: [December 5th](https://github.com/lightning/bolts/issues/1046) --->
-- Core Lightning Developer Call
-    - <!--- TODO replace: [September 20th](https://diyhpl.us/wiki/transcripts/c-lightning/2021-09-20-developer-call/) --->
-- dlc-specs meetings
-    - <!--- TODO replace: [October 5th](https://github.com/discreetlogcontracts/dlcspecs/pull/175) --->
-- Lightning specification meetings
-    - <!--- TODO replace: [October 11th](https://github.com/lightningnetwork/lightning-rfc/issues/920) --->
-- Bitcoin Contracting Primitives Working Group
-	- <!--- TODO replace: [April 18th](https://github.com/ariard/bitcoin-contracting-primitives-wg/blob/main/meetings/meetings-18-04.md) --->
 
 ### Optech
 {{optech}}
@@ -95,6 +81,7 @@ If you can't make it to the main event please join us at PUBKEY around 9:30PM. *
 
 ### [BLIPs](https://github.com/lightning/blips)
 {{blips_prs}}
+
 
 ### [BOLTs](https://github.com/lightningnetwork/lightning-rfc)
 {{lnrfc_prs}}

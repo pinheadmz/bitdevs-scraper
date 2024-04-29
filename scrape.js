@@ -31,9 +31,7 @@ let template = fs.readFileSync(path.join(__dirname, '_template.md'), 'utf-8');
 (async () => {
   //              section        indent  function               args
   await tryCatch('delving',           0, getDelving,            start);
-  await tryCatch('bitcoin_dev',       0, getML,                 start, 'bitcoin-dev');
-  await tryCatch('lightning_dev',     0, getML,                 start, 'lightning-dev');
-  await tryCatch('dlc_dev',           0, getML,                 start, 'dlc-dev', 'https://mailmanlists.org/pipermail/dlc-dev/');
+  await tryCatch('bitcoin_dev',       0, getGoogleML,           start, 'bitcoindev');
   await tryCatch('review_club',       4, getReviewClub,         start);
   await tryCatch('irc_meetings',      4, getCoreDevIRCMeeting,  start);
   await tryCatch('optech',            0, getOptech,             start);
@@ -102,6 +100,7 @@ async function fetchURL(url) {
   });
 }
 
+// ALL DEPRECATED
 async function getML(start, name, _url) {
   const links = [];
   const tempd = new Date(start);
@@ -155,6 +154,7 @@ async function getML(start, name, _url) {
   return links;
 }
 
+// ALL DEPRECATED
 async function checkMLPostDate(href) {
   let dom;
   try {
@@ -166,6 +166,38 @@ async function checkMLPostDate(href) {
   const doc = dom.window.document;
   const date = doc.querySelectorAll('i')[0].innerHTML;
   return new Date(date) > start;
+}
+
+async function getGoogleML(start, group) {
+  const base = `https://groups.google.com/g/${group}`
+  // https://groups.google.com/g/bitcoindev/search?q=after%3A2024-04-01%20before%3A2024-04-29
+  const url = base + `/search?q=after%3A${start.toISOString().split('T')[0]}%20before%3A${end.toISOString().split('T')[0]}`;
+
+  console.log(`Fetching ${url}`);
+
+  const dom = await JSDOM.fromURL(url);
+  const doc = dom.window.document;
+  const convos = doc.querySelectorAll('a');
+  const set = new Set();
+  convos.forEach((convo) => {
+    const href = convo.href;
+    if (href.indexOf(base) !== -1
+      && href.indexOf('/c/') !== -1
+      && !set.has(href)) {
+      set.add(href);
+    }
+  });
+
+  const links = [];
+  for (const href of set.values()) {
+    const link = href.split('/m/')[0];
+    console.log(`  fetching ${link}`);
+
+    const dom = await JSDOM.fromURL(link);
+    const title = dom.window.document.title;
+    links.push(new Link(title, link));
+  };
+  return links;
 }
 
 async function getReviewClub(start) {
@@ -386,6 +418,6 @@ class Link {
   }
 
   toString() {
-    return `- [${this.title}](${this.href})\n`;
+    return `- [${this.title.replace('[','(').replace(']',')')}](${this.href.replace('(','[').replace(')',']')})\n`;
   }
 }
