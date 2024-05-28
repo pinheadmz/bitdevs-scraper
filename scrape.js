@@ -216,7 +216,7 @@ async function getReviewClub(start) {
     const dom = await JSDOM.fromURL(url);
     const doc = dom.window.document;
     const items = doc.querySelectorAll(`#${id} .Home-posts-post`);
-    if (items.length === 0) {
+    if (items.length === 0 && tempd > end) {
       console.log(' No more review club meetings found, aborting');
       break;
     }
@@ -226,6 +226,11 @@ async function getReviewClub(start) {
 
       if (date < start) {
         console.log(' Meeting is before start date, skipping');
+        return; // next item
+      }
+
+      if (date > end) {
+        console.log(' Meeting is in future, skipping');
         return; // next item
       }
 
