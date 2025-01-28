@@ -277,11 +277,10 @@ async function getCoreDevIRCMeeting(start) {
         if (i.nextSibling.data
           && i.nextSibling.data.indexOf('#startmeeting') !== -1
         ) {
-          const lineno = i.previousSibling.previousSibling.innerHTML.trim();
+          const href = i.previousSibling.previousSibling.href;
           const title = tempd.toLocaleString('UTC', {month: 'long'})
                         + ' '
                         + tempd.getUTCDate();
-          const href = url + '#l-' + lineno;
           links.push(new Link(title, href));
         }
       });
