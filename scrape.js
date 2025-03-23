@@ -51,19 +51,53 @@ let template = fs.readFileSync(path.join(__dirname, '_template.md'), 'utf-8');
   await tryCatch('lnrfc_prs',         0, getPRs,                'lightningnetwork', 'lightning-rfc', start);
 
   // Finalize
-  console.log('Fetching Meetup information');
-  const events = JSON.parse(await fetchURL('https://api.meetup.com/BitDevsNYC/events'));
-  let event;
-  for (event of events) {
-    if (event.name.indexOf('Socratic Seminar') !== -1)
-      break;
+  let eventDate = 'EVENTDATE';
+  let eventTitle = 'EVENTTITLE';
+
+  try {
+    console.log('Fetching Meetup information');
+    const icalUrl = 'https://www.meetup.com/bitdevsnyc/events/ical/';
+
+    const response = await fetchURL(icalUrl);
+    const events = response.split('BEGIN:VEVENT');
+
+    if (events.length < 2) {
+      throw new Error('No events found in the calendar.');
+    }
+
+    // The first event block (skip the calendar header part)
+    const firstEventBlock = events[1];
+
+    const getValue = (key) => {
+      const match = firstEventBlock.match(new RegExp(`${key}[:;](.+)`));
+      return match ? match[1].trim() : null;
+    };
+
+    const summary = getValue('SUMMARY');
+    eventTitle = 'Socratic Seminar ' + summary.split(' ').pop();
+
+    const dtstart = getValue('DTSTART');
+    const date = dtstart.split(':').pop();
+    eventDate =
+      date.substr(0,4) +
+      '-' +
+      date.substr(4,2) +
+      '-' +
+      date.substr(6,2);
+
+    const url = getValue('URL');
+    const eventLink = url.split('URI:').pop();
+
+    template = template.replace('{{event_title}}', eventTitle);
+    template = template.replace('{{event_link}}', eventLink);
+  } catch (e) {
+    console.log('Unable to get meetup details:' + e.message);
   }
 
-  template = template.replace('{{event_title}}', event.name);
-  template = template.replace('{{event_link}}', event.link);
-  const eventDate = event.local_date;
-  const eventTitle = event.name.toLowerCase().replaceAll(' ', '-');
-  const filename = eventDate + '-' + eventTitle + '.md';
+  const filename =
+    eventDate +
+    '-' +
+    eventTitle.toLowerCase().replaceAll(' ', '-') + '.md';
   const filepath = path.join(argv[3], filename);
   console.log(`Writing file: ${filepath}`);
   fs.writeFileSync(filepath, template);
@@ -169,7 +203,7 @@ async function checkMLPostDate(href) {
 }
 
 async function getGoogleML(start, group) {
-  const base = `https://groups.google.com/g/${group}`
+  const base = `https://groups.google.com/g/${group}`;
   // https://groups.google.com/g/bitcoindev/search?q=after%3A2024-04-01%20before%3A2024-04-29
   const url = base + `/search?q=after%3A${start.toISOString().split('T')[0]}%20before%3A${end.toISOString().split('T')[0]}`;
 
