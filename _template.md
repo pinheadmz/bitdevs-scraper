@@ -6,7 +6,7 @@ meetup: "{{event_link}}"
 ---
 
 ## Announcements
-Please join us for our next Socratic Seminar. A special thank you to our sponsors [Chaincode Labs](https://chaincode.com) and [Lava](https://www.lava.xyz/) for food, refreshments and event space.
+Please join us for our next Socratic Seminar. A special thank you to our sponsors [Chaincode Labs](https://chaincode.com) and [Cake Wallet](https://www.cakewallet.com/) for food, refreshments and event space.
 
 If you can't make it to the main event please join us at [PUBKEY](https://pubkey.bar/home) around 9:30PM.
 
