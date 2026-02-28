@@ -31,7 +31,7 @@ let template = fs.readFileSync(path.join(__dirname, '_template.md'), 'utf-8');
 (async () => {
   //              section        indent  function               args
   await tryCatch('delving',           0, getDelving,            start);
-  await tryCatch('bitcoin_dev',       0, getGoogleML,           start, 'bitcoindev');
+  await tryCatch('bitcoin_dev',       0, getGoogleML,           start, end, 'bitcoindev');
   await tryCatch('review_club',       4, getReviewClub,         start);
   await tryCatch('irc_meetings',      4, getCoreDevIRCMeeting,  start);
   await tryCatch('optech',            0, getOptech,             start);
@@ -134,103 +134,58 @@ async function fetchURL(url) {
   });
 }
 
-// ALL DEPRECATED
-async function getML(start, name, _url) {
-  const links = [];
-  const tempd = new Date(start);
-  const titles = new Set();
-
-  for (;;) {
-    const url = (_url ? _url : `https://lists.linuxfoundation.org/pipermail/${name}/`) +
-                tempd.getUTCFullYear() +
-                '-' +
-                tempd.toLocaleString('UTC', {month: 'long'}) +
-                '/thread.html';
-
-    let dom;
-    try {
-      console.log(`Fetching ${url}`);
-      dom = await JSDOM.fromURL(url);
-    } catch (e) {
-      console.log(`Error getting page, aborting: ${e.message}`);
-      break;
+async function fetchHTML(url) {
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      "Accept-Language": "en-US,en;q=0.9"
     }
-    const doc = dom.window.document;
-    const items =
-      doc.querySelectorAll('body > ul:nth-of-type(2) > li > a[href]');
+  });
 
-    for (const i of items) {
-      let title = i.innerHTML;
+  const html = await res.text();
 
-      title = title.replace('\n', '');
-      title = title.replace('\t', ' ');
-      title = title.replace(/\[.*\] /g, '');
-
-      if (titles.has(title)) {
-        console.log(` Already have title: "${title}"`);
-        continue;
-      } else {
-        titles.add(title);
-      }
-
-      const href = i.href;
-
-      if (!(await checkMLPostDate(href))) {
-        console.log(` Posted before start date: "${title}"`);
-        continue;
-      }
-      links.push(new Link(title, href));
-    }
-
-    tempd.setUTCMonth(tempd.getUTCMonth() + 1);
-  }
-
-  return links;
+  // remove style tags so css parser never runs
+  return html.replace(/<style[\s\S]*?<\/style>/gi, "");
 }
 
-// ALL DEPRECATED
-async function checkMLPostDate(href) {
-  let dom;
-  try {
-    dom = await JSDOM.fromURL(href);
-  } catch (e) {
-    console.log(`Error getting ML post to check date, aborting: ${e.message}`);
-    return true; // err on the side of "sure..."
-  }
-  const doc = dom.window.document;
-  const date = doc.querySelectorAll('i')[0].innerHTML;
-  return new Date(date) > start;
-}
-
-async function getGoogleML(start, group) {
+async function getGoogleML(start, end, group) {
   const base = `https://groups.google.com/g/${group}`;
-  // https://groups.google.com/g/bitcoindev/search?q=after%3A2024-04-01%20before%3A2024-04-29
-  const url = base + `/search?q=after%3A${start.toISOString().split('T')[0]}%20before%3A${end.toISOString().split('T')[0]}`;
+  const url =
+    `${base}/search?q=after%3A${start.toISOString().split("T")[0]}` +
+    `%20before%3A${end.toISOString().split("T")[0]}`;
 
   console.log(`Fetching ${url}`);
 
-  const dom = await JSDOM.fromURL(url);
-  const doc = dom.window.document;
-  const convos = doc.querySelectorAll('a');
+  const searchHTML = await fetchHTML(url);
+  const searchDOM = new JSDOM(searchHTML);
+  const doc = searchDOM.window.document;
+
+  const convos = doc.querySelectorAll("a");
   const set = new Set();
+
   convos.forEach((convo) => {
     const href = convo.href;
-    if (href.indexOf(base) !== -1
-      && href.indexOf('/c/') !== -1
-      && !set.has(href)) {
-      set.add(href);
+    if (
+      href.includes(base) &&
+      href.includes("/c/") &&
+      !set.has(href)
+    ) {
+      set.add(href.split("/m/")[0]);
     }
   });
 
   const links = [];
-  for (const href of set.values()) {
-    const link = href.split('/m/')[0];
+
+  for (const link of set.values()) {
     console.log(`  fetching ${link}`);
 
-    const dom = await JSDOM.fromURL(link);
+    const html = await fetchHTML(link);
+    const dom = new JSDOM(html);
+
     const title = dom.window.document.title;
     links.push(new Link(title, link));
-  };
+  }
+
   return links;
 }
 
