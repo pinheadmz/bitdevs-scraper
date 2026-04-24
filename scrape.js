@@ -31,6 +31,7 @@ let template = fs.readFileSync(path.join(__dirname, '_template.md'), 'utf-8');
 (async () => {
   //              section        indent  function               args
   await tryCatch('delving',           0, getDelving,            start);
+  await tryCatch('bnoc',              0, getBNOC,               start);
   await tryCatch('bitcoin_dev',       0, getGoogleML,           start, end, 'bitcoindev');
   await tryCatch('review_club',       4, getReviewClub,         start);
   await tryCatch('irc_meetings',      4, getCoreDevIRCMeeting,  start);
@@ -389,6 +390,33 @@ outer:
       }
 
       out.push(new Link(topic.title, `https://delvingbitcoin.org/t/${topic.slug}`));
+    }
+  }
+
+  return out;
+}
+
+async function getBNOC(start) {
+  const out = [];
+
+outer:
+  for (let page = 0; page < 9; page++) {
+    const url = `https://bnoc.xyz/latest.json?page=${page}`;
+
+    console.log(`Fetching ${url}`);
+
+    const res = JSON.parse(await fetchURL(url));
+    const topics = res['topic_list']['topics'];
+    topics.sort((a, b) => b.id - a.id);
+
+    for (const topic of topics) {
+      const postDate = new Date(topic['created_at']);
+      if (postDate < start) {
+        console.log(`  Topic "${topic['title']}" posted before start date`);
+        break outer;
+      }
+
+      out.push(new Link(topic.title, `https://bnoc.xyz/t/${topic.slug}`));
     }
   }
 

@@ -27,6 +27,9 @@ Follow New York BitDevs on:
 #### [Delving Bitcoin](https://delvingbitcoin.org/)
 {{delving}}
 
+#### [Bitcoin Network Operations Collective](https://bnoc.xyz/)
+{{bnoc}}
+
 ### Meetings
 - [Bitcoin PR Review Club](https://bitcoincore.reviews)
 {{review_club}}
