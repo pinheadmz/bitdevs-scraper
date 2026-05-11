@@ -34,8 +34,9 @@ let template = fs.readFileSync(path.join(__dirname, '_template.md'), 'utf-8');
   await tryCatch('bnoc',              0, getBNOC,               start);
   await tryCatch('bitcoin_dev',       0, getGoogleML,           start, end, 'bitcoindev');
   await tryCatch('review_club',       4, getReviewClub,         start);
-  await tryCatch('irc_meetings',      4, getCoreDevIRCMeeting,  start);
-  await tryCatch('optech',            0, getOptech,             start);
+  await tryCatch('irc_meetings',          4, getCoreDevIRCMeeting,        start);
+  await tryCatch('lightning_spec_meeting', 4, getLightningSpecMeeting, start);
+  await tryCatch('optech',                0, getOptech,               start);
   await tryCatch('bitcoin_core_prs',  0, getPRs,                'bitcoin', 'bitcoin', start);
   await tryCatch('bdk_prs',           0, getPRs,                'bitcoindevkit', 'bdk', start);
   await tryCatch('hwi_prs',           0, getPRs,                'bitcoin-core', 'HWI', start);
@@ -279,6 +280,30 @@ async function getCoreDevIRCMeeting(start) {
     }
 
     tempd.setUTCDate(tempd.getUTCDate() + 1);
+  }
+
+  return links;
+}
+
+async function getLightningSpecMeeting(start) {
+  const url = 'https://api.github.com/repos/lightning/bolts/issues?state=all&sort=created&direction=desc&per_page=100';
+
+  console.log(`Fetching ${url}`);
+
+  const issues = JSON.parse(await fetchURL(url));
+  const links = [];
+
+  for (const issue of issues) {
+    const createdAt = new Date(issue.created_at);
+    if (createdAt < start) {
+      console.log(`  Issue #${issue.number} created before start date`);
+      continue;
+    }
+
+    if (/lightning.spec(ification)?.meeting/i.test(issue.title)) {
+      console.log(`  Adding issue #${issue.number}: ${issue.title}`);
+      links.push(new Link(issue.title, issue.html_url));
+    }
   }
 
   return links;

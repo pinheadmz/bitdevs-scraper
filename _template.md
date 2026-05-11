@@ -36,7 +36,7 @@ Follow New York BitDevs on:
 - Bitcoin Core general developer meetings
 {{irc_meetings}}
 - Lightning Specification meeting
-    - <!--- TODO replace: [December 5th](https://github.com/lightning/bolts/issues/1046) --->
+{{lightning_spec_meeting}}
 
 ### Optech
 {{optech}}
