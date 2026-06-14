@@ -265,8 +265,9 @@ async function getCoreDevIRCMeeting(start) {
       const doc = dom.window.document;
       const items = doc.querySelectorAll('.nt');
       items.forEach((i) => {
-        if (i.nextSibling.data
-          && i.nextSibling.data.indexOf('#startmeeting') !== -1
+        const ns = i.nextSibling;
+        if (!ns || !ns.data) return;
+        if (ns.data.indexOf('#startmeeting') !== -1
         ) {
           const href = i.previousSibling.previousSibling.href;
           const title = tempd.toLocaleString('UTC', {month: 'long'})
