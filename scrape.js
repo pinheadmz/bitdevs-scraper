@@ -295,16 +295,25 @@ async function getLightningSpecMeeting(start) {
   const links = [];
 
   for (const issue of issues) {
-    const createdAt = new Date(issue.created_at);
-    if (createdAt < start) {
-      console.log(`  Issue #${issue.number} created before start date`);
+    if (!/lightning.spec(ification)?.meeting/i.test(issue.title)) {
       continue;
     }
 
-    if (/lightning.spec(ification)?.meeting/i.test(issue.title)) {
-      console.log(`  Adding issue #${issue.number}: ${issue.title}`);
-      links.push(new Link(issue.title, issue.html_url));
+    // Extract meeting date from title (format: "Lightning Specification Meeting YYYY/MM/DD")
+    const dateMatch = issue.title.match(/(\d{4})\/(\d{2})\/(\d{2})/);
+    if (!dateMatch) {
+      console.log(`  Issue #${issue.number} has no date in title, skipping`);
+      continue;
     }
+
+    const meetingDate = new Date(`${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`);
+    if (meetingDate < start) {
+      console.log(`  Issue #${issue.number} meeting date ${dateMatch[0]} before start date`);
+      continue;
+    }
+
+    console.log(`  Adding issue #${issue.number}: ${issue.title}`);
+    links.push(new Link(issue.title, issue.html_url));
   }
 
   return links;
