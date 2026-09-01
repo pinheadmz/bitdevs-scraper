@@ -3,6 +3,7 @@ layout: post
 type: socratic
 title: "{{event_title}}"
 meetup: "{{event_link}}"
+luma: "{{luma_link}}"
 ---
 
 ## Announcements

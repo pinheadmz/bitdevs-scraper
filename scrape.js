@@ -92,6 +92,15 @@ let template = fs.readFileSync(path.join(__dirname, '_template.md'), 'utf-8');
 
     template = template.replace('{{event_title}}', eventTitle);
     template = template.replace('{{event_link}}', eventLink);
+
+    // Fetch the Luma event link for this seminar
+    try {
+      const lumaLink = await getLumaLink(eventTitle);
+      template = template.replace('{{luma_link}}', lumaLink);
+    } catch (e) {
+      console.log('Unable to get Luma link: ' + e.message);
+      template = template.replace('{{luma_link}}', '');
+    }
   } catch (e) {
     console.log('Unable to get meetup details:' + e.message);
   }
@@ -456,6 +465,27 @@ outer:
   }
 
   return out;
+}
+
+async function getLumaLink(eventTitle) {
+  const calUrl = 'https://luma.com/calendar/cal-BocajELvgRuxaCx';
+  console.log(`Fetching Luma calendar ${calUrl}`);
+
+  const html = await fetchHTML(calUrl);
+
+  // The calendar page embeds JSON-LD with an itemListElement of upcoming events.
+  // Each event has a "url" (https://luma.com/<slug>) and a "name".
+  // Match the event whose name contains the seminar number from the title.
+  const num = eventTitle.split(' ').pop();
+  const re = new RegExp(
+    '"url":"(https://luma\\.com/[a-z0-9]+)","name":"[^"]*Socratic Seminar ' + num + '"'
+  );
+  const m = html.match(re);
+  if (m) {
+    return m[1];
+  }
+
+  throw new Error('No Luma event found for ' + eventTitle);
 }
 
 function fillSection(section, indent, links) {
