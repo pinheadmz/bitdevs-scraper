@@ -46,7 +46,7 @@ let template = fs.readFileSync(path.join(__dirname, '_template.md'), 'utf-8');
   await tryCatch('dlc_prs',           0, getPRs,                'discreetlogcontracts', 'dlcspecs', start);
   await tryCatch('cln_prs',           0, getPRs,                'ElementsProject', 'lightning', start);
   await tryCatch('eclair_prs',        0, getPRs,                'ACINQ', 'eclair', start);
-  await tryCatch('ldk_prs',           0, getPRs,                'lightningdevkit', 'rust-lightning', start, 'main');
+  await tryCatch('ldk_prs',           0, getForgejoPRs,       'git.rust-bitcoin.org', 'lightningdevkit', 'rust-lightning', start, 'main');
   await tryCatch('lnd_prs',           0, getPRs,                'lightningnetwork', 'lnd', start);
   await tryCatch('bips_prs',          0, getPRs,                'bitcoin', 'bips', start);
   await tryCatch('blips_prs',         0, getPRs,                'lightning', 'blips', start);
@@ -128,11 +128,12 @@ async function tryCatch(section, indent, fn, ...args) {
   }
 }
 
-async function fetchURL(url) {
+async function fetchURL(url, headers = {}) {
   return new Promise((resolve, reject) => {
+    const mergedHeaders = {'User-Agent': 'bitdevs-scraper', ...headers};
     https.get(
       url,
-      {headers: {'User-Agent': 'bitdevs-scraper'}},
+      {headers: mergedHeaders},
       (res) => {
         const data = [];
         res.on('data', (chunk) => {
@@ -411,6 +412,78 @@ async function getPRs(org, repo, start, branch='master') {
       }
       if (pr.base.ref !== branch) {
         // should not happen
+        console.log(`  PR #${pr.number} not merged into ${branch}`);
+        continue;
+      }
+
+      const mergeDate = new Date(pr.merged_at);
+      if (mergeDate < start) {
+        console.log(`  PR #${pr.number} merged before start date`);
+        continue;
+      }
+
+      console.log(`  Adding PR #${pr.number}, merged on ${pr.merged_at}`);
+      links.push({merged: pr.merged_at, title: pr.title, href: pr.html_url});
+    }
+
+    if (links.length === 0) {
+      console.log('  No links to add from this page, aborting');
+      break;
+    }
+
+    links.sort((a, b) => {
+      return (new Date(b.merged) - new Date(a.merged));
+    });
+    const filtered = links.map(l => new Link(l.title, l.href));
+    out = out.concat(filtered);
+  }
+  return out;
+}
+
+async function getForgejoPRs(host, org, repo, start, branch = 'main') {
+  // Forgejo/Gitea (git.rust-bitcoin.org) replaced GitHub as the LDK
+  // upstream; GitHub is a mirror with PRs disabled there, so this uses
+  // the Forgejo /pulls API. GET /pulls returns only true PRs (no issue
+  // conflation), each with `merged`, `merged_at`, `base.ref`, and an
+  // html_url like .../pulls/5301. Pagination is capped at 50/page.
+  let out = [];
+  for (let page = 1; page < 10; page++) {
+    const url =
+      `https://${host}/api/v1/repos/${org}/${repo}/pulls?state=closed` +
+      `&sort=recentupdate&direction=desc&limit=50&page=${page}`;
+
+    console.log(`Fetching ${url}`);
+
+    const links = [];
+    // The Forgejo host UA-allowlists: a bot/browser UA string receives an
+    // HTML 403 challenge (the "captcha" the scraper was warned about).
+    // Send a curl UA; JSON.parse errors below are rethrown with the flag.
+    let prs;
+    try {
+      prs = JSON.parse(await fetchURL(url, {'User-Agent': 'curl/8.14.1'}));
+    } catch (e) {
+      throw new Error(
+        `Forgejo API non-JSON response for ${org}/${repo} (possible captcha) - ${e.message}`
+      );
+    }
+
+    if (!Array.isArray(prs)) {
+      // CAPTCHA / WAF: a JSON body that is not an array is unexpected —
+      // flag it and let the section stay empty.
+      throw new Error(
+        `Forgejo API non-JSON response for ${org}/${repo} (possible captcha) - section skipped`
+      );
+    }
+    if (prs.length === 0) {
+      console.log('  No more PRs');
+      break;
+    }
+    for (const pr of prs) {
+      if (!pr.merged) {
+        console.log(`  PR #${pr.number} not merged`);
+        continue;
+      }
+      if (pr.base.ref !== branch) {
         console.log(`  PR #${pr.number} not merged into ${branch}`);
         continue;
       }
