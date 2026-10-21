@@ -145,8 +145,28 @@ async function fetchURL(url) {
   });
 }
 
+// Quick TCP reachability check: resolves the failure mode where JSDOM.fromURL
+// has no timeout and hangs forever in SYN-SENT when the host is unreachable.
+function hostReachable(urlStr, timeoutMs = 5000) {
+  return new Promise((resolve) => {
+    try {
+      const u = new URL(urlStr);
+      const req = https.request(
+        { hostname: u.hostname, port: 443, method: "HEAD", path: "/", timeout: timeoutMs },
+        (res) => { res.resume(); resolve(true); }
+      );
+      req.on("timeout", () => { req.destroy(); resolve(false); });
+      req.on("error", () => resolve(false));
+      req.end();
+    } catch (e) {
+      resolve(false);
+    }
+  });
+}
+
 async function fetchHTML(url) {
   const res = await fetch(url, {
+    signal: AbortSignal.timeout(20000),
     headers: {
       "User-Agent": "Mozilla/5.0",
       "Accept-Language": "en-US,en;q=0.9"
@@ -264,6 +284,12 @@ async function getCoreDevIRCMeeting(start) {
   const links = [];
   const tempd = new Date(start);
 
+  // JSDOM.fromURL has no timeout and hangs forever in SYN-SENT when the
+  // log host is unreachable. Probe once; if down, skip the whole section.
+  if (!(await hostReachable(getURL(tempd)))) {
+    console.log("WARNING: erisian.com.au unreachable - skipping IRC meeting links");
+    return links;
+  }
   while (tempd <= end) {
     const url = getURL(tempd);
     console.log(`Fetching ${url}`);
